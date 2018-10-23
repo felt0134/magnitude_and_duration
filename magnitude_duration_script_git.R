@@ -416,7 +416,7 @@ full.no.outliers.1$dPPT<-full.no.outliers.1$dPPT*100
 dodge<-position_dodge(width=0.4)
 (anpp$dPPT)
 #ggplot
-ggplot(sgs_experiment_final_2,aes(GSP.diff,anpp.effect,na.rm=TRUE)) +
+ggplot(sgs_obs_data,aes(gsp.diff,anpp.effect,na.rm=TRUE)) +
   #scale_color_manual(values=c('increase'='blue','decrease'='red'),name="") +
   #geom_bar() +
   #geom_point(pch=1,size=4) +
@@ -647,5 +647,84 @@ head(swale)
 swale_summed<-aggregate(weight~plot + transect + site_name + Year,sum,data=swale)  
 head(swale_summed)  
 swale_averaged<-aggregate(weight~Year + site_name,mean,data=swale_summed)
-wd
-##stopped
+swale_averaged$weight<-swale_averaged$weight*4 #multiply by 4 to get ANPP per meter square
+write.csv(swale_averaged,file = "sgs_swale_anpp.csv")
+
+
+#precip data
+sgs_climate_data<-read.csv(file.choose(),header=TRUE)
+head(sgs_climate_data)
+
+sgs_climate_data$year<-substr(sgs_climate_data$Date,0,4)
+sgs_climate_data$month<-substr(sgs_climate_data$Date,5,6)
+sgs_climate_data$day<-substr(sgs_climate_data$Date,7,8)
+
+
+library(dplyr)
+
+sgs_precip_data_2<- sgs_climate_data %>%
+#dplyr::filter(!month %in% c("1","2","3","4","9","10","11","12")) %>%
+  #dplyr::filter(!month < 6) %>%
+dplyr::filter(!year < 1983) 
+#summary(sgs_precip_data_2)
+
+sgs_precip_data_3<- sgs_precip_data_2 %>%
+  dplyr::filter(!month %in% c("01","02","03","04","09","10","11","12")) 
+
+sgs_precip_data_4<-aggregate(Daily_Precip_Total_mm~year,sum,data=sgs_precip_data_3)
+sgs_precip_data_4$Year<-sgs_precip_data_4$year
+merge_sgs_obs_1<-merge(sgs_precip_data_4,swale_averaged,by=c("Year"))
+
+plot(weight~Daily_Precip_Total_mm,data=merge_sgs_obs_1) #looks good
+
+sgs_obs_lm_may_august<-lm(weight~Daily_Precip_Total_mm,data=merge_sgs_obs_1)
+summary(sgs_obs_lm_may_august) #r-square is 0.23
+outlierTest(sgs_obs_lm_may_august) #not outliers
+
+sgs_obs_lm_june_august<-lm(weight~Daily_Precip_Total_mm,data=merge_sgs_obs_1)
+summary(sgs_obs_lm_june_august) #r-square is very low
+outlierTest(sgs_obs_lm_june_august)
+
+#test/remove outliers
+library(car)
+lm_sgs_obs<-lm(weight~Daily_Precip_Total_mm,data=merge_sgs_obs_1)
+outlierTest(lm_sgs_obs) #not quite to 0.05 threshold
+
+#median anpp
+mean(merge_sgs_obs_1$weight) # take median of weight
+
+lrr_sgs_obs_anpp <- function(x) {
+  
+  
+  lrr_sgs_obs <- log(x/108.74)
+  
+  return(lrr_sgs_obs)
+}
+
+
+effect_sgs_obs<-aggregate(weight ~ Year,lrr_sgs_obs_anpp,data=merge_sgs_obs_1)
+
+mean(merge_sgs_obs_1$Daily_Precip_Total_mm)
+
+perc_precip_sgs_obs<- function(x) {
+  
+  
+  perc_sgs_obs <- ((x- 197.385)/ 197.385)*100
+  
+  return(perc_sgs_obs)
+}
+
+precip_change_sgs_obs<-aggregate(Daily_Precip_Total_mm ~ Year, perc_precip_sgs_obs,data=merge_sgs_obs_1)
+
+merge_sgs_obs<-merge(precip_change_sgs_obs,effect_sgs_obs,by=c("Year"))
+plot(weight~Daily_Precip_Total_mm,merge_sgs_obs)
+
+plot(anpp.effect~GSP.diff,data=sgs_experiment_final_2 )
+sgs_obs_lm<-lm(weight~Daily_Precip_Total_mm,data=merge_sgs_obs)
+summary(sgs_obs_lm)
+outlierTest(sgs_obs_lm) #no outliers
+poly.obs.exp<-lm(weight~Daily_Precip_Total_mm +I(Daily_Precip_Total_mm^2),data=merge_sgs_obs)
+AIC(sgs_obs_lm,poly.obs.exp)
+
+write.csv(merge_sgs_obs,file = "sgs_obs_mag_dur.csv")
+sgs_obs_data<-read.csv(file.choose(),header=TRUE)
