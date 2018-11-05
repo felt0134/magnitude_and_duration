@@ -415,8 +415,9 @@ anpp_ggplot$dPPT<-anpp_ggplot$dPPT*100
 full.no.outliers.1$dPPT<-full.no.outliers.1$dPPT*100
 dodge<-position_dodge(width=0.4)
 (anpp$dPPT)
+library(ggplot2)
 #ggplot
-ggplot(sgs_obs_data,aes(gsp.diff,anpp.effect,na.rm=TRUE)) +
+ggplot(sgs_experiment_final_vwc,aes(vwc.diff,anpp.effect,na.rm=TRUE)) +
   #scale_color_manual(values=c('increase'='blue','decrease'='red'),name="") +
   #geom_bar() +
   #geom_point(pch=1,size=4) +
@@ -441,7 +442,8 @@ ggplot(sgs_obs_data,aes(gsp.diff,anpp.effect,na.rm=TRUE)) +
   #stat_smooth(method = "lm", formula = y ~ poly(x, 2), linetype="dashed",size = 1,se=FALSE,color="black") + #geom_smooth(method="lm",se=FALSE,color="black") +
   #xlab("Duration of study") +
   #xlab("% Precipiaton deviation from control") +
-  xlab("% Precipiaton deviation from median") +
+  #xlab("% Precipiaton deviation from median") +
+  #xlab("% Soil moisture deviation from median") +
   ylab("ANPP effect size") +
   #ylab("Precipitation treatment") +
   geom_smooth(method="lm",se=TRUE,color="black",size=0.5) +
@@ -500,7 +502,8 @@ plot(ANPP~GSP..June.August..x,data=merge_sgs)
 konza_obs<-read.csv(file.choose(),header = TRUE)
 konza<-subset(konza_obs,Variability=="Ambient")
 konza_exp<-read.csv(file.choose(),header = TRUE)
-konza_exp_2<-subset(konza_exp,Variability.2=="Even.2016")
+head(konza_exp)
+konza_exp_2<-subset(konza_exp,Year=="2016")
 konza_obs<-subset(konza_exp,Variability=="Ambient")
 
 plot(ANPP~GSP,data=konza_obs)
@@ -543,9 +546,10 @@ library(car)
 outlierTest(konza_lm)
 
 #experiment
-
+####### need to make a new csv file with just 2016 ANPP and VWC
 #median anpp
-median<-subset(konza_exp_2,GSP=="422.875")
+median()
+median<-subset(konza_exp_2,mm=="422.875")
 mean(median$ANPP)
 
 lrr_konza_exp <- function(x) {
@@ -728,3 +732,131 @@ AIC(sgs_obs_lm,poly.obs.exp)
 
 write.csv(merge_sgs_obs,file = "sgs_obs_mag_dur.csv")
 sgs_obs_data<-read.csv(file.choose(),header=TRUE)
+
+
+# sgs soil moisture - experimental -------------------------------------------------------
+
+#shortgrasss steppe
+#experimental data
+sgs_experiment<-read.csv(file.choose(),header=TRUE)
+head(sgs_experiment)
+plot(x.100~vwc.20cm,data=sgs_experiment)
+anpp.ag.experiment<-aggregate(x.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=sgs_experiment)
+plot(x.100~vwc.20cm,data=anpp.ag.experiment)
+
+#test/remove outliers
+library(car)
+lm_sgs_experiment_vwc<-lm(x.100~vwc.20cm,data=anpp.ag.experiment)
+outlierTest(lm_sgs_experiment_vwc) #remove one observation
+summary(lm_sgs_experiment_vwc)
+
+#median anpp
+
+median(anpp.ag.experiment$vwc.20cm)
+#17.033
+median(anpp.ag.experiment$x.100)
+#69.38
+
+lrr_sgs_exp_vwc_anpp <- function(x) {
+  
+  
+  lrr_sgs_vwc <- log(x/69.38)
+  
+  return(lrr_sgs_vwc)
+}
+
+
+effect_sgs_exp_vwc<-aggregate(x.100 ~ mm + Plot,lrr_sgs_exp_vwc_anpp,data=anpp.ag.experiment)
+
+perc_precip_sgs_exp_vwc<- function(x) {
+  
+  
+  perc_sgs_exp_vwc <- ((x-17.033)/17.033)*100
+  
+  return(perc_sgs_exp_vwc)
+}
+
+precip_change_sgs_exp_vwc<-aggregate(vwc.20cm ~ Plot, perc_precip_sgs_exp_vwc,data=anpp.ag.experiment)
+
+merge_sgs_exp_vwc<-merge(precip_change_sgs_exp_vwc,effect_sgs_exp_vwc,by=c("Plot"))
+head(merge_sgs_exp_vwc)
+
+lm_exp_vwc<-lm(x.100~vwc.20cm,data=merge_sgs_exp_vwc)
+summary(lm_exp_vwc)
+plot(x.100~vwc.20cm,data=merge_sgs_exp_vwc)
+
+write.csv(merge_sgs_exp_vwc,file = "sgs_ex_mag_dur_vwc.csv")
+sgs_experiment_final_vwc<-read.csv(file.choose(),header=TRUE)
+head(sgs_experiment_final_vwc)
+
+
+plot(anpp.effect~vwc.diff,data=sgs_experiment_final_vwc)
+sgs_exp_lm_vwc<-lm(anpp.effect~vwc.diff,data=sgs_experiment_final_vwc)
+summary(sgs_exp_lm)
+outlierTest(sgs_exp_lm_vwc) #no outliers
+poly.sgs.exp_vwc<-lm(anpp.effect~vwc.diff +I(vwc.diff^2),sgs_experiment_final_vwc)
+AIC(sgs_exp_lm_vwc,poly.sgs.exp_vwc) #linear model  preferable
+
+
+
+# Konza experiment VWC ----------------------------------------------------
+
+#experimental data
+
+head(konza_exp_2)
+plot(ANPP~mm,data=konza_exp_2)
+
+#test/remove outliers
+library(car)
+lm_konza_experiment_vwc<-lm(ANPP~mm,data=konza_exp_2)
+outlierTest(lm_konza_experiment_vwc) #remove one observation
+summary(lm_sgs_experiment_vwc)
+
+#median anpp
+
+median(konza_exp_2$vwc)
+#24.18
+median(konza_exp_2$ANPP) #just took the absoulte median, as opposed to the mean value of ANPP at median ppt
+#414.45
+
+lrr_konza_exp_vwc_anpp <- function(x) {
+  
+  
+  lrr_konza_vwc <- log(x/414.45)
+  
+  return(lrr_konza_vwc)
+}
+
+
+effect_konza_exp_vwc<-aggregate(ANPP ~ vwc + Plot,lrr_konza_exp_vwc_anpp,data=konza_exp_2)
+
+perc_konza_exp_vwc<- function(x) {
+  
+  
+  perc_konza_exp_vwc_func <- ((x-24.18)/24.18)*100
+  
+  return(perc_konza_exp_vwc_func)
+}
+
+precip_change_konza_exp_vwc<-aggregate(vwc ~ Plot, perc_konza_exp_vwc,data=konza_exp_2)
+
+merge_konza_exp_vwc<-merge(precip_change_konza_exp_vwc,effect_konza_exp_vwc,by=c("Plot"))
+head(merge_konza_exp_vwc)
+
+plot(ANPP~vwc.x,data=merge_konza_exp_vwc)
+
+lm_exp_vwc_konza<-lm(ANPP~vwc.x,data=merge_konza_exp_vwc)
+outlierTest(lm_exp_vwc_konza) #no outliers
+
+write.csv(merge_konza_exp_vwc,file = "konza_ex_mag_dur_vwc.csv")
+sgs_experiment_final_vwc<-read.csv(file.choose(),header=TRUE)
+head(sgs_experiment_final_vwc)
+
+
+plot(anpp.effect~vwc.diff,data=sgs_experiment_final_vwc)
+sgs_exp_lm_vwc<-lm(anpp.effect~vwc.diff,data=sgs_experiment_final_vwc)
+summary(sgs_exp_lm)
+outlierTest(sgs_exp_lm_vwc) #no outliers
+poly.sgs.exp_vwc<-lm(anpp.effect~vwc.diff +I(vwc.diff^2),sgs_experiment_final_vwc)
+AIC(sgs_exp_lm_vwc,poly.sgs.exp_vwc) #linear model  preferable
+
