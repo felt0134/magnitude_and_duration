@@ -21,23 +21,23 @@ konza_lter_upland$se_perc <- (konza_lter_upland$Total.ANPP.st.error/konza_lter_u
 drought_konza<-subset(konza_lter_upland,Year==c('1988','1989'))
 
 Year<-c('1988','1988','1989','1989')
-Variable<-c('Precipitation','ANPP','Precipitation','ANPP')
+Variable<-c('A','B','A','B') #precipitation=A, ANPP=B
 Mean<-c(-45.2,-23.93,-37.11,-48.07)
 SE<-c(0,10,0,6.042)
 konza.plotting<-data.frame(Year,Variable,Mean,SE)
 SE<-c('')
 
 inset_konza<-ggplot(konza.plotting,aes(as.factor(Year),Mean,fill=Variable)) +
-  geom_errorbar(aes(ymin=Mean-SE , ymax=Mean+SE),position=position_dodge(width=1), size=1,width=.2) +
+  geom_errorbar(aes(ymin=Mean-SE , ymax=Mean+SE),position=position_dodge(width=1), size=0.4,width=.2) +
   #geom_point()
   #geom_bar(aes(fill = Variable), position = "dodge", stat="identity")
-  stat_summary(fun.y='mean',geom='bar',position=position_dodge(width=1),pch=21,size=0.5,color='black') +
+  stat_summary(fun.y='mean',geom='bar',position=position_dodge(width=1),pch=21,size=0.4,color='black') +
   geom_hline(yintercept = 0,color='black',size=1.25) +
-  scale_fill_manual(name='',values=c(ANPP ="red", Precipitation ="blue"),
-                      labels=c('ANPP'='ANPP','Precipitation'= 'Precipitation')) +
+  scale_fill_manual(name='',values=c("lightblue","red",'darkblue','red'),
+                      labels=c('B'='ANPP','A'= 'Precipitation')) +
   xlab('') +
   #ylab(bquote('PUE ('*g/m^2/mm*')')) +
-  ylab('% reduction from mean') +
+  ylab('% Reduction from mean') +
   ggtitle('') +
   theme(
     axis.text.x = element_text(color='black',size=12), #angle=25,hjust=1),
@@ -55,10 +55,12 @@ inset_konza<-ggplot(konza.plotting,aes(as.factor(Year),Mean,fill=Variable)) +
 
 konza_experiment<-read.csv(file.path(anpp, "MaD.ANPP.VWC.2016.csv"))
 head(konza_experiment)
+konza_experiment_2<-subset(konza_experiment,percentile=='25')
 konza_experiment_2016<-subset(konza_experiment,Year=='2016') 
 main_konza<-ggplot(konza_experiment_2016,aes(mm,ANPP)) +
   geom_point(size=5,pch=1,fill='white',color='black',alpha=0.75) +
   stat_smooth(method='lm',se=F,color='black',size=1.5) +
+  geom_point(data=konza_experiment_2,aes(mm,ANPP), fill="lightblue",colour='black',pch=21,size=5) +
   xlim(175,1050) +
   xlab('') +
   ylab('') +
@@ -77,7 +79,7 @@ main_konza<-ggplot(konza_experiment_2016,aes(mm,ANPP)) +
     axis.line.x = element_line(colour = "black"),
     axis.line.y = element_line(colour = "black"))
 
-vp <- viewport(width = 0.30, height = 0.40, x = 0.32,y=0.84)
+vp <- viewport(width = 0.30, height = 0.40, x = 0.32,y=0.845)
 
 #executing the inset, you create a function the utlizes all the previous code
 full <- function() {
@@ -125,22 +127,23 @@ drought_sgs_2<-subset(sgs_lter_mean_ser,Year==c('1989'))
 drought_sgs_3<-rbind(drought_sgs_2,drought_sgs)
 
 Year<-c('1988','1988','1989','1989')
-Variable<-c('Precipitation','ANPP','Precipitation','ANPP')
+Variable<-c('A','B','A','B') #A = precipitation, B=ANPP
 Mean<-c(-37.82,3.53,-17.77,-19.047)
 SE<-c(0,4.015,0,4.3)
 sgs.plotting<-data.frame(Year,Variable,Mean,SE)
 
 inset_sgs<-ggplot(sgs.plotting,aes(as.factor(Year),Mean,fill=Variable)) +
-  geom_errorbar(aes(ymin=Mean-SE , ymax=Mean+SE),position=position_dodge(width=1), size=1,width=.2) +
+  geom_errorbar(aes(ymin=Mean-SE , ymax=Mean+SE),position=position_dodge(width=1), size=0.4,width=.2) +
   #geom_point()
   #geom_bar(aes(fill = Variable), position = "dodge", stat="identity")
-  stat_summary(fun.y='mean',geom='bar',position=position_dodge(width=1),pch=21,size=0.5,color='black') +
+  stat_summary(fun.y='mean',geom='bar',position=position_dodge(width=1),pch=21,size=0.4,color='black') +
   geom_hline(yintercept = 0,color='black',size=1.25) +
-  scale_fill_manual(name='',values=c(ANPP ="red", Precipitation ="blue"),
-                    labels=c('ANPP'='ANPP','Precipitation'= 'Precipitation')) +
+  scale_fill_manual(name='',values=c(B ="red", A ="lightblue"),
+                    labels=c('B'='ANPP','A'= 'Precipitation')) +
+  scale_colour_gradient2() +
   xlab('') +
   #ylab(bquote('PUE ('*g/m^2/mm*')')) +
-  ylab('% reduction from mean') +
+  ylab('% Reduction from mean') +
   ggtitle('') +
   theme(
     axis.text.x = element_text(color='black',size=12), #angle=25,hjust=1),
@@ -161,11 +164,18 @@ head(sgs_experiment)
 #remove known outlier
 sgs_experiment_2<-sgs_experiment[-3,]
 
-sgs_experiment_averaged<-aggregate(x.100~Plot + mm,mean,data=sgs_experiment_2)
+sgs_experiment_averaged<-aggregate(x.100~Plot + mm + percentile,mean,data=sgs_experiment_2)
+sgs_experiment_averaged_10<-subset(sgs_experiment_averaged,percentile==c('10'))
+sgs_experiment_averaged_15<-subset(sgs_experiment_averaged,percentile==c('15'))
+sgs_experiment_averaged_25<-subset(sgs_experiment_averaged,percentile==c('25'))
+
+sgs_experiment_averaged_1<-rbind(sgs_experiment_averaged_10,sgs_experiment_averaged_15)
+sgs_experiment_averaged_2<-rbind(sgs_experiment_averaged_1,sgs_experiment_averaged_25)
 
 main_sgs<-ggplot(sgs_experiment_averaged,aes(mm,x.100)) +
   geom_point(size=5,pch=1,fill='white',color='black',alpha=0.75) +
   stat_smooth(method='lm',se=F,color='black',size=1.5) +
+  geom_point(data=sgs_experiment_averaged_2,aes(mm,x.100), fill="lightblue",colour='black',pch=21,size=5) +
   xlab('') +
   ylab(bquote('ANPP ('*g/m^2*')')) +
   ggtitle('') +
@@ -183,7 +193,7 @@ main_sgs<-ggplot(sgs_experiment_averaged,aes(mm,x.100)) +
     axis.line.x = element_line(colour = "black"),
     axis.line.y = element_line(colour = "black"))
 
-vp.sgs <- viewport(width = 0.30, height = 0.40, x = 0.32,y=0.82)
+vp.sgs <- viewport(width = 0.30, height = 0.40, x = 0.35,y=0.82)
 
 #executing the inset, you create a function the utlizes all the previous code
 full.sgs <- function() {
